@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Game with Dijkstra's Algorithm</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+
+            font-family: "Pacifico", cursive;
+            font-weight: 400;
+            font-style: normal;
+        }
+        #maze {
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            gap: 2px;
+
+            margin-bottom: 16px;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 900;
+            color: #000000;
+        }
+        .wall {
+            background-color: black;
+        }
+        .start {
+            background-color: green;
+            color: white;
+            font-size: 16px;
+        }
+        .end {
+            background-color: red;
+            color: white;
+            font-size: 16px;
+        }
+        .visited {
+            background-color: lightblue;
+            font-size: 16px;
+
+        }
+        .current-update {
+            background-color: orange;
+            font-size: 16px;
+        }
+        #nextStepBtn, #newGameBtn {
+            margin-top: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+        }
+
+        #nextStepBtn {
+            margin-right: 12px;
+        }
+    </style>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="maze"></div>
+
+    <div class="wrapper">
+        <button id="nextStepBtn">Next Step</button>
+        <button id="newGameBtn">New Game</button>
+    </div>
+
+    <script>
+        // 미로 행 열 정의 
+        const rows = 15;
+        const cols = 15;
+
+        // 미로,버튼 
+        let mazeContainer = document.getElementById('maze');
+        let nextStepBtn = document.getElementById('nextStepBtn');
+        let newGameBtn = document.getElementById('newGameBtn');
+        // 알고리즘에 필요한 변수 초기화 
+        // 전체적인 미로 0이면 통과 가능 1이라면 통과 x (벽)
+        let maze = [];
+        let start = [0, 0];
+        let end = [rows - 1, cols - 1];
+        let distances, visited, priorityQueue, previousCells = [];
+        // distances  최소거리
+        // visted     방문 여부 True 방문 False 방문 x
+        // priorityQueqe 탐색중인 셀과 그 셀가지 거리 저장 
+        // previousCell  이전에 방문된 셀 추적 UI 업데이트 
+
+        let clickEvent;
+
+        // 미로 생성 함수 
+        function generateMazeDFS() {
+            // 모든 셀을 1로 설정 벽 생성
+            maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+            // DFS 스택 생성 
+            let stack = [];
+            // 시작 지점 = 0 
+            maze[start[0]][start[1]] = 0;
+            // 시작 위치 스택 추가 
+            stack.push(start);
+            // 2칸씩 이동하며 경로 탐색 
+            const directions = [
+                [0, 2], [2, 0], [0, -2], [-2, 0]
+            ]; 
+
+            // 스택이 비어있지 않은동안 루프 실행 랜덤 경로 미로 생성 
+            while (stack.length > 0) {
+                const [row, col] = stack.pop();
+                // -0.5 가 없는경우 동일한 경로만 생성 방향을 랜덤으로 정하기 위해 양수와 음수가 둘 다 나올 수 있도록 -0.5 사용 
+                
+                directions.sort(() => Math.random() - 0.5);
+                
+                // 행렬의 이동 방향 업데이트 
+                for (const [dRow, dCol] of directions) {
+                    let newRow = row + dRow;
+                    let newCol = col + dCol;
+                
+                    if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols && maze[newRow][newCol] === 1) {
+                        maze[row + dRow / 2][col + dCol / 2] = 0;
+                        maze[newRow][newCol] = 0;
+                        stack.push([newRow, newCol]);
+                    }
+                }
+            }
+
+            maze[end[0]][end[1]] = 0;
+            renderMaze();
+        }
+
+        function renderMaze() {
+            mazeContainer.innerHTML = '';
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+
+                    if (maze[i][j] === 1) {
+                        cell.classList.add('wall');
+                    } else {
+                        cell.innerText = "∞"; 
+                    }
+
+                    mazeContainer.appendChild(cell);
+                }
+            }
+
+            document.querySelector(`[data-row="${start[0]}"][data-col="${start[1]}"]`).classList.add('start');
+            document.querySelector(`[data-row="${end[0]}"][data-col="${end[1]}"]`).classList.add('end');
+        }
+
+        function dijkstra() {
+            distances = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
+            visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+            priorityQueue = [[start[0], start[1], 0]];
+            distances[start[0]][start[1]] = 0;
+            previousCells = [];
+
+            function processQueue() {
+                // 이전 셀과 거리가 0 이라면 더이상 진행 x 
+                if (priorityQueue.length === 0) {
+                    nextStepBtn.disabled = true;
+                    return;
+                }
+                // 한번에 업데이트 할 셀의 수 
+                let cellsToProcess = Math.min(3, priorityQueue.length);
+                let processedCells = [];
+
+                for (let i = 0; i < cellsToProcess; i++) {
+                    //  priorityQueue == [low,col,distance]  즉 거리가 더 가까운 셀을 우선으로  처리 
+                    priorityQueue.sort((a, b) => a[2] - b[2]);
+                    let [currentRow, currentCol, currentDistance] = priorityQueue.shift();
+
+                    if (visited[currentRow][currentCol]) continue;
+                    visited[currentRow][currentCol] = true;
+
+                    const cell = document.querySelector(`[data-row="${currentRow}"][data-col="${currentCol}"]`);
+                    if (!(currentRow === start[0] && currentCol === start[1])) {
+                        cell.classList.add('current-update');
+                        processedCells.push([currentRow, currentCol]);
+                    }
+
+                    
+                    cell.innerText = distances[currentRow][currentCol];
+                    // 도착지점 도달시 다음 스텝 진행 x  
+                    if (currentRow === end[0] && currentCol === end[1]) {
+                        nextStepBtn.disabled = true;
+                        return;
+                    }
+
+                    const directions = [
+                        [0, 1], [1, 0], [0, -1], [-1, 0]
+                    ];
+                    // 한칸씩 넓혀가며 탐색 
+                    for (const [dRow, dCol] of directions) {
+                        let newRow = currentRow + dRow;
+                        let newCol = currentCol + dCol;
+
+                        if (
+                            // 경계를 벗어나지 않도록 조건 확인 
+                            newRow >= 0 && newRow < rows &&
+                            newCol >= 0 && newCol < cols &&
+                            // 이 경로가 벽이 아닌지 확인 1 이라면 벽 
+                            maze[newRow][newCol] === 0 &&
+                            // 방문여부 확인 True 라면 전에 방문한 경로 
+                            !visited[newRow][newCol]
+                        ) {
+                            // 다음 경로를 탐색할 때 마다 1씩 추가하며 탐색 
+                            let newDistance = currentDistance + 1;
+                            // 새로운 최댄경로가 기존 최단경로보다 작을때 업데이트 
+                            if (newDistance < distances[newRow][newCol]) {
+                                distances[newRow][newCol] = newDistance;
+                                priorityQueue.push([newRow, newCol, newDistance]);
+                            }
+                        }
+                    }
+                }
+                
+                for (const [prevRow, prevCol] of previousCells) {
+                    if (!(prevRow === start[0] && prevCol === start[1])) {
+                        const prevCell = document.querySelector(`[data-row="${prevRow}"][data-col="${prevCol}"]`);
+                        prevCell.classList.remove('current-update');
+                        prevCell.classList.add('visited');
+                    }
+                }
+
+                previousCells = processedCells;
+            }
+
+
+            nextStepBtn.removeEventListener('click', clickEvent);
+            nextStepBtn.addEventListener('click', processQueue);
+            clickEvent = processQueue;
+        }
+
+        newGameBtn.addEventListener('click', () => {
+            generateMazeDFS();
+            dijkstra();
+            nextStepBtn.disabled = false;
+        });
+
+        generateMazeDFS();
+        dijkstra();
+    </script>
+</body>
+</html>
