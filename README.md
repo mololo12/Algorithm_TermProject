@@ -28,8 +28,9 @@ This project is a **Maze Game** developed using HTML, CSS, and JavaScript. Users
 ## Example Image
 > Below is an example of a maze and the pathfinding process using the Dijkstra Algorithm.
 
-![Maze Example](#)
-**
+![Maze Example1](https://raw.githubusercontent.com/mololo12/Algorithm_TermProject/refs/heads/main/img_1.png)
+
+![Maze Example2](https://raw.githubusercontent.com/mololo12/Algorithm_TermProject/refs/heads/main/img_2.png)
 
 ## Contributors
 1. **김준기**
